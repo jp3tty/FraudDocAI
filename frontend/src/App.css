@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Custom styles for FraudDocAI */
+.fraud-score-low {
+  @apply bg-green-100 text-green-800 border-green-200;
+}
+
+.fraud-score-medium {
+  @apply bg-yellow-100 text-yellow-800 border-yellow-200;
+}
+
+.fraud-score-high {
+  @apply bg-red-100 text-red-800 border-red-200;
+}
+
+.fraud-score-critical {
+  @apply bg-red-200 text-red-900 border-red-300;
+}
+
+.document-card {
+  @apply bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow;
+}
+
+.upload-zone {
+  @apply border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors;
+}
+
+.upload-zone.dragover {
+  @apply border-blue-500 bg-blue-50;
+}

@@ -1,0 +1,7 @@
+Invoice #SUS-2024-002
+Services Rendered: Consulting
+Amount: $5,000
+Payment Terms: Net 30
+Please remit payment to:
+Account: 5555555555
+Note: Payment must be made via wire transfer only
