@@ -92,16 +92,17 @@
 
 ## 🤖 **AI/ML Implementation**
 
-### **Fraud Detection Models**
-- **Text Classifier:** `cardiffnlp/twitter-roberta-base-emotion`
-- **Question Answering:** `distilbert-base-uncased-distilled-squad`
-- **Embeddings:** `all-MiniLM-L6-v2`
+### **Fraud Detection Implementation**
+- **Pattern-Based Analysis:** Advanced keyword matching and regex pattern detection
+- **Risk Scoring Algorithm:** Multi-factor fraud probability calculation with confidence scoring
+- **Real-Time Processing:** Fast, lightweight fraud detection engine with sub-millisecond response times
 
 ### **Fraud Detection Logic**
-1. **Keyword Analysis** - Detect fraud-related terms
-2. **Pattern Recognition** - Identify suspicious document structures
-3. **Risk Scoring** - Calculate fraud probability (0.0-1.0)
-4. **Classification** - Assign risk levels (LOW, MEDIUM, HIGH)
+1. **Keyword Analysis** - Detect fraud-related terms with confidence scoring
+2. **Pattern Recognition** - Identify suspicious document structures using regex patterns
+3. **Multi-Factor Scoring** - Calculate fraud probability based on multiple indicators
+4. **Risk Classification** - Assign risk levels (LOW, MEDIUM, HIGH, CRITICAL)
+5. **Confidence Tracking** - Track detection confidence for each pattern
 
 ### **Detection Patterns**
 - **Urgency Indicators** - "URGENT", "IMMEDIATE", "ASAP"
