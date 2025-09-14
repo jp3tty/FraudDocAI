@@ -9,6 +9,37 @@ export interface UploadResponse {
   status: string;
 }
 
+export interface Emotion {
+  emotion: string;
+  confidence: number;
+}
+
+export interface FraudIndicator {
+  emotion: string;
+  confidence: number;
+  reason: string;
+}
+
+export interface EmotionAnalysis {
+  emotions: Emotion[];
+  fraud_indicators: FraudIndicator[];
+  emotion_fraud_score: number;
+  model_used: string;
+  text_analyzed: number;
+  timestamp: string;
+}
+
+export interface Pattern {
+  pattern: string;
+  confidence: number;
+  description: string;
+}
+
+export interface PatternAnalysis {
+  patterns: Pattern[];
+  pattern_fraud_score: number;
+}
+
 export interface Document {
   id: string;
   user_id: string | null;
@@ -22,6 +53,8 @@ export interface Document {
   fraud_score: number | null;
   fraud_risk_level: string;
   extracted_text: string | null;
+  emotion_analysis?: EmotionAnalysis;
+  pattern_analysis?: PatternAnalysis;
   metadata: any;
   created_at: string;
   updated_at: string;

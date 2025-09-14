@@ -260,6 +260,84 @@ const DocumentUpload: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Emotion Analysis Results */}
+                  {doc.emotion_analysis && (() => {
+                    try {
+                      const emotionData = typeof doc.emotion_analysis === 'string' 
+                        ? JSON.parse(doc.emotion_analysis) 
+                        : doc.emotion_analysis;
+                      return (
+                        <div className="mt-4 border-t pt-4">
+                          <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                            <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                            Emotion Analysis (AI-Powered)
+                          </h4>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {emotionData.emotions?.map((emotion: any, index: number) => (
+                          <div key={index} className="bg-purple-50 p-2 rounded text-xs">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium capitalize">{emotion.emotion}</span>
+                              <span className="text-purple-600">{(emotion.confidence * 100).toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full bg-purple-200 rounded-full h-1 mt-1">
+                              <div 
+                                className="bg-purple-500 h-1 rounded-full" 
+                                style={{ width: `${emotion.confidence * 100}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                          {emotionData.fraud_indicators?.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-xs font-medium text-red-600 mb-2">Fraud-Indicating Emotions:</p>
+                              <div className="space-y-1">
+                                {emotionData.fraud_indicators.map((indicator: any, index: number) => (
+                                  <div key={index} className="text-xs text-red-600 bg-red-50 p-2 rounded">
+                                    {indicator.emotion} ({(indicator.confidence * 100).toFixed(1)}%) - {indicator.reason}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    } catch (error) {
+                      console.error('Error parsing emotion analysis:', error);
+                      return null;
+                    }
+                  })()}
+
+                  {/* Pattern Analysis Results */}
+                  {doc.pattern_analysis && (() => {
+                    try {
+                      const patternData = typeof doc.pattern_analysis === 'string' 
+                        ? JSON.parse(doc.pattern_analysis) 
+                        : doc.pattern_analysis;
+                      return patternData.patterns?.length > 0 ? (
+                        <div className="mt-4 border-t pt-4">
+                          <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                            <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
+                            Pattern Analysis
+                          </h4>
+                          <div className="space-y-2">
+                            {patternData.patterns.map((pattern: any, index: number) => (
+                          <div key={index} className="bg-orange-50 p-2 rounded text-xs">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">{pattern.description}</span>
+                              <span className="text-orange-600">{(pattern.confidence * 100).toFixed(1)}%</span>
+                            </div>
+                          </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    } catch (error) {
+                      console.error('Error parsing pattern analysis:', error);
+                      return null;
+                    }
+                  })()}
                 </div>
               ))}
             

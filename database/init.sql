@@ -31,6 +31,8 @@ CREATE TABLE documents (
     fraud_score DECIMAL(5,2) DEFAULT 0.00,
     fraud_risk_level VARCHAR(20) DEFAULT 'low', -- low, medium, high, critical
     extracted_text TEXT,
+    emotion_analysis JSONB, -- Store emotion analysis results
+    pattern_analysis JSONB, -- Store pattern analysis results
     metadata JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

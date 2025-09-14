@@ -11,10 +11,14 @@ import logging
 from typing import List, Dict, Any
 from datetime import datetime
 import re
+from emotion_fraud_detector import EmotionFraudDetector
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Initialize emotion fraud detector
+emotion_detector = EmotionFraudDetector()
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -59,8 +63,10 @@ async def health_check():
             "fraud_detector": True,
             "embedding_model": True,
             "text_classifier": True,
-            "question_answering": True
+            "question_answering": True,
+            "emotion_detector": emotion_detector.model_loaded
         },
+        "emotion_model_info": emotion_detector.get_model_info(),
         "timestamp": datetime.utcnow().isoformat()
     }
 
@@ -93,8 +99,8 @@ async def process_document(file: UploadFile = File(...)):
         # Extract text from document
         extracted_text = await extract_text_from_document(content, file.content_type)
         
-        # Analyze text for fraud patterns
-        fraud_analysis = await analyze_text_for_fraud(extracted_text)
+        # Analyze text for fraud patterns using emotion detector
+        fraud_analysis = emotion_detector.analyze_fraud_patterns(extracted_text)
         
         result = {
             "document_id": f"doc-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
@@ -104,8 +110,10 @@ async def process_document(file: UploadFile = File(...)):
             "extracted_text": extracted_text[:500] + "..." if len(extracted_text) > 500 else extracted_text,
             "fraud_score": fraud_analysis["fraud_score"],
             "fraud_risk_level": fraud_analysis["risk_level"],
-            "detected_patterns": fraud_analysis["patterns"],
-            "processing_time_ms": fraud_analysis["processing_time"],
+            "emotion_analysis": fraud_analysis["emotion_analysis"],
+            "pattern_analysis": fraud_analysis["pattern_analysis"],
+            "processing_time_ms": fraud_analysis["processing_time_ms"],
+            "model_used": fraud_analysis["model_used"],
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -124,15 +132,17 @@ async def analyze_text(request: TextAnalysisRequest):
     try:
         logger.info("Analyzing text for fraud patterns")
         
-        # Use fraud analysis
-        fraud_analysis = await analyze_text_for_fraud(request.text)
+        # Use emotion-based fraud analysis
+        fraud_analysis = emotion_detector.analyze_fraud_patterns(request.text)
         
         result = {
             "text_length": len(request.text),
             "fraud_score": fraud_analysis["fraud_score"],
             "fraud_risk_level": fraud_analysis["risk_level"],
-            "detected_patterns": fraud_analysis["patterns"],
-            "analysis_time_ms": fraud_analysis["processing_time"],
+            "emotion_analysis": fraud_analysis["emotion_analysis"],
+            "pattern_analysis": fraud_analysis["pattern_analysis"],
+            "analysis_time_ms": fraud_analysis["processing_time_ms"],
+            "model_used": fraud_analysis["model_used"],
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -259,93 +269,7 @@ async def extract_text_from_document(content: bytes, content_type: str) -> str:
         logger.error(f"Error extracting text: {e}")
         return "Error extracting text from document"
 
-async def analyze_text_for_fraud(text: str) -> dict:
-    """Analyze text for fraud patterns using pattern matching"""
-    start_time = datetime.utcnow()
-    
-    try:
-        # Initialize fraud patterns
-        patterns = []
-        fraud_score = 0.0
-        
-        # 1. Pattern-based fraud detection
-        fraud_keywords = [
-            "urgent", "immediate", "confidential", "wire transfer", "bitcoin",
-            "cryptocurrency", "offshore", "tax haven", "shell company",
-            "forged", "fake", "duplicate", "altered", "tampered"
-        ]
-        
-        text_lower = text.lower()
-        for keyword in fraud_keywords:
-            if keyword in text_lower:
-                patterns.append({
-                    "pattern": "fraud_keyword",
-                    "confidence": 0.7,
-                    "description": f"Fraud-related keyword detected: '{keyword}'"
-                })
-                fraud_score += 0.1
-        
-        # 2. Amount pattern detection
-        amount_patterns = re.findall(r'\$[\d,]+\.?\d*', text)
-        if len(amount_patterns) > 5:  # Many amounts might indicate suspicious activity
-            patterns.append({
-                "pattern": "excessive_amounts",
-                "confidence": 0.6,
-                "description": f"Excessive number of monetary amounts detected: {len(amount_patterns)}"
-            })
-            fraud_score += 0.2
-        
-        # 3. Email/phone pattern detection
-        email_patterns = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
-        if len(email_patterns) > 3:
-            patterns.append({
-                "pattern": "multiple_emails",
-                "confidence": 0.5,
-                "description": f"Multiple email addresses detected: {len(email_patterns)}"
-            })
-            fraud_score += 0.1
-        
-        # 4. Urgency indicators
-        urgency_words = ["urgent", "immediate", "asap", "rush", "emergency", "critical"]
-        urgency_count = sum(1 for word in urgency_words if word in text_lower)
-        if urgency_count > 2:
-            patterns.append({
-                "pattern": "urgency_indicators",
-                "confidence": 0.6,
-                "description": f"Multiple urgency indicators detected: {urgency_count}"
-            })
-            fraud_score += 0.15
-        
-        # Normalize fraud score
-        fraud_score = min(fraud_score, 1.0)
-        
-        # Determine risk level
-        if fraud_score >= 0.8:
-            risk_level = "critical"
-        elif fraud_score >= 0.6:
-            risk_level = "high"
-        elif fraud_score >= 0.3:
-            risk_level = "medium"
-        else:
-            risk_level = "low"
-        
-        processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-        
-        return {
-            "fraud_score": round(fraud_score, 3),
-            "risk_level": risk_level,
-            "patterns": patterns,
-            "processing_time": round(processing_time, 2)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error in fraud analysis: {e}")
-        return {
-            "fraud_score": 0.0,
-            "risk_level": "low",
-            "patterns": [],
-            "processing_time": 0
-        }
+# Old fraud analysis function removed - now using EmotionFraudDetector
 
 if __name__ == "__main__":
     uvicorn.run(

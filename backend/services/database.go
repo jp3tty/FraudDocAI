@@ -26,6 +26,8 @@ type Document struct {
 	FraudScore       *float64  `json:"fraud_score"`
 	FraudRiskLevel   string    `json:"fraud_risk_level"`
 	ExtractedText    *string   `json:"extracted_text"`
+	EmotionAnalysis  *string   `json:"emotion_analysis"`
+	PatternAnalysis  *string   `json:"pattern_analysis"`
 	Metadata         *string   `json:"metadata"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
@@ -75,17 +77,17 @@ func (d *DatabaseService) Close() error {
 func (d *DatabaseService) CreateDocument(doc *Document) error {
 	query := `
 		INSERT INTO documents (
-			user_id, filename, original_filename, file_path, file_size, 
+			user_id, filename, original_filename, file_path, file_size,
 			mime_type, document_type, status, fraud_score, fraud_risk_level,
-			extracted_text, metadata
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			extracted_text, emotion_analysis, pattern_analysis, metadata
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id, created_at, updated_at`
 
 	err := d.db.QueryRow(
 		query,
 		doc.UserID, doc.Filename, doc.OriginalFilename, doc.FilePath,
 		doc.FileSize, doc.MimeType, doc.DocumentType, doc.Status,
-		doc.FraudScore, doc.FraudRiskLevel, doc.ExtractedText, doc.Metadata,
+		doc.FraudScore, doc.FraudRiskLevel, doc.ExtractedText, doc.EmotionAnalysis, doc.PatternAnalysis, doc.Metadata,
 	).Scan(&doc.ID, &doc.CreatedAt, &doc.UpdatedAt)
 
 	return err
@@ -95,7 +97,7 @@ func (d *DatabaseService) GetDocument(id string) (*Document, error) {
 	query := `
 		SELECT id, user_id, filename, original_filename, file_path, file_size,
 		       mime_type, document_type, status, fraud_score, fraud_risk_level,
-		       extracted_text, metadata, created_at, updated_at
+		       extracted_text, emotion_analysis, pattern_analysis, metadata, created_at, updated_at
 		FROM documents WHERE id = $1`
 
 	doc := &Document{}
@@ -103,7 +105,7 @@ func (d *DatabaseService) GetDocument(id string) (*Document, error) {
 		&doc.ID, &doc.UserID, &doc.Filename, &doc.OriginalFilename,
 		&doc.FilePath, &doc.FileSize, &doc.MimeType, &doc.DocumentType,
 		&doc.Status, &doc.FraudScore, &doc.FraudRiskLevel,
-		&doc.ExtractedText, &doc.Metadata, &doc.CreatedAt, &doc.UpdatedAt,
+		&doc.ExtractedText, &doc.EmotionAnalysis, &doc.PatternAnalysis, &doc.Metadata, &doc.CreatedAt, &doc.UpdatedAt,
 	)
 
 	if err != nil {
@@ -113,14 +115,14 @@ func (d *DatabaseService) GetDocument(id string) (*Document, error) {
 	return doc, nil
 }
 
-func (d *DatabaseService) UpdateDocumentFraudAnalysis(id string, fraudScore float64, riskLevel string, extractedText string) error {
+func (d *DatabaseService) UpdateDocumentFraudAnalysis(id string, fraudScore float64, riskLevel string, extractedText string, emotionAnalysis, patternAnalysis string) error {
 	query := `
 		UPDATE documents 
 		SET fraud_score = $2, fraud_risk_level = $3, extracted_text = $4, 
-		    status = 'processed', updated_at = CURRENT_TIMESTAMP
+		    emotion_analysis = $5, pattern_analysis = $6, status = 'processed', updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1`
 
-	_, err := d.db.Exec(query, id, fraudScore, riskLevel, extractedText)
+	_, err := d.db.Exec(query, id, fraudScore, riskLevel, extractedText, emotionAnalysis, patternAnalysis)
 	return err
 }
 
@@ -146,7 +148,7 @@ func (d *DatabaseService) GetDocuments(limit, offset int) ([]*Document, error) {
 	query := `
 		SELECT id, user_id, filename, original_filename, file_path, file_size,
 		       mime_type, document_type, status, fraud_score, fraud_risk_level,
-		       extracted_text, metadata, created_at, updated_at
+		       extracted_text, emotion_analysis, pattern_analysis, metadata, created_at, updated_at
 		FROM documents 
 		ORDER BY created_at DESC 
 		LIMIT $1 OFFSET $2`
@@ -164,7 +166,7 @@ func (d *DatabaseService) GetDocuments(limit, offset int) ([]*Document, error) {
 			&doc.ID, &doc.UserID, &doc.Filename, &doc.OriginalFilename,
 			&doc.FilePath, &doc.FileSize, &doc.MimeType, &doc.DocumentType,
 			&doc.Status, &doc.FraudScore, &doc.FraudRiskLevel,
-			&doc.ExtractedText, &doc.Metadata, &doc.CreatedAt, &doc.UpdatedAt,
+			&doc.ExtractedText, &doc.EmotionAnalysis, &doc.PatternAnalysis, &doc.Metadata, &doc.CreatedAt, &doc.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err

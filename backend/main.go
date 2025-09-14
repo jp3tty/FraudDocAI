@@ -367,8 +367,20 @@ func analyzeDocumentForFraud(documentID, text string) error {
 		riskLevel = "unknown"
 	}
 
+	// Extract emotion analysis data
+	emotionAnalysis, err := json.Marshal(analysisResult["emotion_analysis"])
+	if err != nil {
+		emotionAnalysis = []byte("{}")
+	}
+
+	// Extract pattern analysis data
+	patternAnalysis, err := json.Marshal(analysisResult["pattern_analysis"])
+	if err != nil {
+		patternAnalysis = []byte("{}")
+	}
+
 	// Update document in database with fraud analysis results
-	err = dbService.UpdateDocumentFraudAnalysis(documentID, fraudScore, riskLevel, text)
+	err = dbService.UpdateDocumentFraudAnalysis(documentID, fraudScore, riskLevel, text, string(emotionAnalysis), string(patternAnalysis))
 	if err != nil {
 		return fmt.Errorf("failed to update document with fraud analysis: %v", err)
 	}
