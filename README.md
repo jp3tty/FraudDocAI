@@ -284,9 +284,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👨‍💻 **Author**
 
 **Jeremy Petty**
-- Portfolio: [your-portfolio-url]
-- LinkedIn: [your-linkedin-url]
-- Email: [your-email]
+- Portfolio: https://medium.com/@jeremy.m.petty
+- LinkedIn: https://www.linkedin.com/in/jeremympetty/
 
 ---
 
