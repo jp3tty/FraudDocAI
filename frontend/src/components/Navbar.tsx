@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, Upload, BarChart3, FileText } from 'lucide-react';
+import { Shield, Upload, BarChart3, FileText, MessageCircle } from 'lucide-react';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
@@ -9,6 +9,7 @@ const Navbar: React.FC = () => {
     { path: '/', label: 'Dashboard', icon: BarChart3 },
     { path: '/upload', label: 'Upload', icon: Upload },
     { path: '/analysis', label: 'Analysis', icon: Shield },
+    { path: '/qa', label: 'Q&A', icon: MessageCircle },
     { path: '/reports', label: 'Reports', icon: FileText },
   ];
 

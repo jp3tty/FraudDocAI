@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -96,6 +97,14 @@ func setupRoutes(r *gin.Engine) {
 			fraud.POST("/analyze", analyzeDocument)
 			fraud.GET("/patterns", getFraudPatterns)
 			fraud.GET("/reports", getFraudReports)
+		}
+
+		// Document Question Answering routes
+		qa := v1.Group("/qa")
+		{
+			qa.POST("/ask", askDocument)
+			qa.POST("/analyze-fraud", analyzeDocumentFraud)
+			qa.GET("/model-info", getQAModelInfo)
 		}
 
 		// User routes
@@ -244,10 +253,107 @@ func deleteDocument(c *gin.Context) {
 
 // Fraud detection handlers
 func analyzeDocument(c *gin.Context) {
-	// TODO: Implement fraud analysis
+	var request struct {
+		FileID string `json:"file_id" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":  "Invalid request format",
+			"status": "error",
+		})
+		return
+	}
+
+	// Get document from database
+	document, err := dbService.GetDocument(request.FileID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":  "Document not found",
+			"status": "error",
+		})
+		return
+	}
+
+	// Use the extracted text for analysis
+	var text string
+	if document.ExtractedText != nil {
+		text = *document.ExtractedText
+	} else {
+		text = "No text extracted from document"
+	}
+
+	// Call AI service for fraud analysis
+	// Send text as query parameter instead of JSON body
+	url := fmt.Sprintf("http://localhost:8001/analyze-text?text=%s", url.QueryEscape(text))
+
+	// Call AI service
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to create request",
+			"status": "error",
+		})
+		return
+	}
+	req.Header.Set("Authorization", "Bearer test-token")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":  "AI service unavailable",
+			"status": "error",
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to read AI service response",
+			"status": "error",
+		})
+		return
+	}
+
+	// Parse response
+	var aiResponse map[string]interface{}
+	if err := json.Unmarshal(body, &aiResponse); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to parse AI service response",
+			"status": "error",
+		})
+		return
+	}
+
+	// Extract fraud score and risk level
+	fraudScore, ok := aiResponse["fraud_score"].(float64)
+	if !ok {
+		fraudScore = 0.0
+	}
+
+	riskLevel, ok := aiResponse["fraud_risk_level"].(string)
+	if !ok {
+		riskLevel = "unknown"
+	}
+
+	// Update document in database with fraud analysis results
+	err = dbService.UpdateDocumentFraudAnalysis(request.FileID, fraudScore, riskLevel, text, "", "")
+	if err != nil {
+		log.Printf("Failed to update document with fraud analysis: %v", err)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Fraud analysis endpoint - TODO: implement",
-		"status":  "success",
+		"fraud_score":   fraudScore,
+		"risk_level":    riskLevel,
+		"patterns":      aiResponse["patterns"],
+		"confidence":    aiResponse["confidence"],
+		"status":        "success",
+		"document_id":   request.FileID,
+		"analysis_time": aiResponse["processing_time"],
 	})
 }
 
@@ -327,18 +433,18 @@ func extractTextFromFile(file io.Reader, contentType string) (string, error) {
 
 // Fraud analysis function that calls AI service
 func analyzeDocumentForFraud(documentID, text string) error {
-	// Prepare request to AI service
-	requestBody := map[string]string{
-		"text": text,
-	}
-
-	jsonData, err := json.Marshal(requestBody)
-	if err != nil {
-		return fmt.Errorf("failed to marshal request: %v", err)
-	}
+	// Send text as query parameter instead of JSON body
+	url := fmt.Sprintf("http://localhost:8001/analyze-text?text=%s", url.QueryEscape(text))
 
 	// Call AI service
-	resp, err := http.Post("http://localhost:8001/analyze-text", "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer test-token")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to call AI service: %v", err)
 	}
@@ -387,4 +493,198 @@ func analyzeDocumentForFraud(documentID, text string) error {
 
 	log.Printf("Fraud analysis completed for document %s: score=%.3f, risk=%s", documentID, fraudScore, riskLevel)
 	return nil
+}
+
+// Document Question Answering handlers
+func askDocument(c *gin.Context) {
+	var request struct {
+		Question     string `json:"question" binding:"required"`
+		DocumentText string `json:"document_text" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":  "Invalid request format",
+			"status": "error",
+		})
+		return
+	}
+
+	// Call AI service for document question answering
+	formData := fmt.Sprintf("question=%s&document_text=%s",
+		request.Question,
+		request.DocumentText)
+
+	// Call AI service
+	req, err := http.NewRequest("POST", "http://localhost:8001/ask-document", bytes.NewBufferString(formData))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to create request",
+			"status": "error",
+		})
+		return
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "Bearer test-token")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":  "AI service unavailable",
+			"status": "error",
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to read AI service response",
+			"status": "error",
+		})
+		return
+	}
+
+	// Parse and return response
+	var aiResponse map[string]interface{}
+	if err := json.Unmarshal(body, &aiResponse); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to parse AI service response",
+			"status": "error",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"question":   aiResponse["question"],
+		"answer":     aiResponse["answer"],
+		"confidence": aiResponse["confidence"],
+		"model_used": aiResponse["model_used"],
+		"timestamp":  aiResponse["timestamp"],
+		"status":     "success",
+	})
+}
+
+func analyzeDocumentFraud(c *gin.Context) {
+	var request struct {
+		DocumentText string `json:"document_text" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":  "Invalid request format",
+			"status": "error",
+		})
+		return
+	}
+
+	// Call AI service for fraud analysis using QA
+	formData := fmt.Sprintf("document_text=%s", request.DocumentText)
+
+	// Call AI service
+	req, err := http.NewRequest("POST", "http://localhost:8001/analyze-document-fraud", bytes.NewBufferString(formData))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to create request",
+			"status": "error",
+		})
+		return
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "Bearer test-token")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":  "AI service unavailable",
+			"status": "error",
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to read AI service response",
+			"status": "error",
+		})
+		return
+	}
+
+	// Parse and return response
+	var aiResponse map[string]interface{}
+	if err := json.Unmarshal(body, &aiResponse); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to parse AI service response",
+			"status": "error",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"fraud_analysis":     aiResponse["fraud_analysis"],
+		"overall_risk":       aiResponse["overall_risk"],
+		"total_risk_score":   aiResponse["total_risk_score"],
+		"questions_analyzed": aiResponse["questions_analyzed"],
+		"model_used":         aiResponse["model_used"],
+		"timestamp":          aiResponse["timestamp"],
+		"status":             "success",
+	})
+}
+
+func getQAModelInfo(c *gin.Context) {
+	// Call AI service for model info
+	req, err := http.NewRequest("GET", "http://localhost:8001/qa-model-info", nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to create request",
+			"status": "error",
+		})
+		return
+	}
+	req.Header.Set("Authorization", "Bearer test-token")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":  "AI service unavailable",
+			"status": "error",
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to read AI service response",
+			"status": "error",
+		})
+		return
+	}
+
+	// Parse and return response
+	var aiResponse map[string]interface{}
+	if err := json.Unmarshal(body, &aiResponse); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to parse AI service response",
+			"status": "error",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"model_available": aiResponse["model_available"],
+		"model_info":      aiResponse["model_info"],
+		"timestamp":       aiResponse["timestamp"],
+		"status":          "success",
+	})
 }

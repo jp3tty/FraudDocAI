@@ -74,6 +74,52 @@ export interface FraudAnalysisResponse {
   status: string;
 }
 
+export interface DocumentQARequest {
+  question: string;
+  document_text: string;
+}
+
+export interface DocumentQAResponse {
+  question: string;
+  answer: string;
+  confidence: number;
+  model_used: string;
+  timestamp: string;
+  status: string;
+}
+
+export interface DocumentFraudAnalysisRequest {
+  document_text: string;
+}
+
+export interface FraudIndicator {
+  pattern: string;
+  confidence: number;
+  description: string;
+}
+
+export interface FraudAnalysisItem {
+  question: string;
+  answer: string;
+  confidence: number;
+  category: string;
+  fraud_indicators: {
+    risk_score: number;
+    indicators: string[];
+  };
+  risk_score: number;
+}
+
+export interface DocumentFraudAnalysisResponse {
+  fraud_analysis: FraudAnalysisItem[];
+  overall_risk: string;
+  total_risk_score: number;
+  questions_analyzed: number;
+  model_used: string;
+  timestamp: string;
+  status: string;
+}
+
 export const api = {
   // Upload document to backend
   async uploadDocument(file: File): Promise<UploadResponse> {
@@ -126,6 +172,51 @@ export const api = {
     
     if (!response.ok) {
       throw new Error(`Failed to get document: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  // Document Question Answering
+  async askDocument(request: DocumentQARequest): Promise<DocumentQAResponse> {
+    const response = await fetch(`${API_BASE_URL}/qa/ask`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Document QA failed: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  // Analyze document for fraud using QA
+  async analyzeDocumentFraud(request: DocumentFraudAnalysisRequest): Promise<DocumentFraudAnalysisResponse> {
+    const response = await fetch(`${API_BASE_URL}/qa/analyze-fraud`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Document fraud analysis failed: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  // Get QA model info
+  async getQAModelInfo() {
+    const response = await fetch(`${API_BASE_URL}/qa/model-info`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get QA model info: ${response.statusText}`);
     }
 
     return response.json();

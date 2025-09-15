@@ -3,7 +3,7 @@ FraudDocAI - AI Service
 FastAPI service for document processing and fraud detection
 """
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
 import uvicorn
@@ -41,11 +41,12 @@ fraud_detector = None
 embedding_model = None
 text_classifier = None
 question_answering_model = None
+document_qa_service = None
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize AI models on startup"""
-    global document_processor, fraud_detector, embedding_model, text_classifier, question_answering_model
+    global document_processor, fraud_detector, embedding_model, text_classifier, question_answering_model, document_qa_service
     
     logger.info("Starting FraudDocAI AI Service...")
     
@@ -90,8 +91,13 @@ async def startup_event():
         logger.info("Initializing fraud detector...")
         fraud_detector = "ready"
         
+        # 6. Document Question Answering Service
+        logger.info("Initializing Document QA service...")
+        from document_qa_service import DocumentQuestionAnsweringService
+        document_qa_service = DocumentQuestionAnsweringService()
+        
         logger.info("✅ All AI models loaded successfully!")
-        logger.info(f"Models loaded: {len([m for m in [text_classifier, question_answering_model, embedding_model] if m is not None])}/3")
+        logger.info(f"Models loaded: {len([m for m in [text_classifier, question_answering_model, embedding_model, document_qa_service] if m is not None])}/4")
         
     except Exception as e:
         logger.error(f"Failed to start AI Service: {e}")
@@ -102,6 +108,7 @@ async def startup_event():
         embedding_model = "limited"
         text_classifier = "limited"
         question_answering_model = "limited"
+        document_qa_service = "limited"
 
 @app.get("/")
 async def root():
@@ -123,12 +130,14 @@ async def health_check():
             "fraud_detector": fraud_detector is not None,
             "embedding_model": embedding_model is not None,
             "text_classifier": text_classifier is not None,
-            "question_answering": question_answering_model is not None
+            "question_answering": question_answering_model is not None,
+            "document_qa_service": document_qa_service is not None
         },
         "model_details": {
             "text_classifier": str(type(text_classifier).__name__) if text_classifier else "Not loaded",
             "question_answering": str(type(question_answering_model).__name__) if question_answering_model else "Not loaded",
-            "embedding_model": str(type(embedding_model).__name__) if embedding_model else "Not loaded"
+            "embedding_model": str(type(embedding_model).__name__) if embedding_model else "Not loaded",
+            "document_qa_service": str(type(document_qa_service).__name__) if document_qa_service else "Not loaded"
         },
         "timestamp": datetime.utcnow().isoformat()
     }
@@ -202,12 +211,55 @@ async def analyze_text(
         # Use real AI analysis
         fraud_analysis = await analyze_text_for_fraud(text)
         
+        # Create detailed emotion analysis response
+        emotions = []
+        fraud_indicators = []
+        
+        # Extract emotion data from the classification result
+        if text_classifier and text_classifier != "limited":
+            try:
+                classification_result = text_classifier(text[:512])
+                if classification_result and len(classification_result) > 0:
+                    for result in classification_result[0]:
+                        emotions.append({
+                            "emotion": result["label"],
+                            "confidence": result["score"]
+                        })
+                        
+                        # Check for fraud indicators based on emotions
+                        if any(word in result["label"].lower() for word in ["anger", "fear", "sadness"]):
+                            fraud_indicators.append({
+                                "emotion": result["label"],
+                                "confidence": result["score"],
+                                "reason": f"Suspicious emotional tone detected: {result['label']}"
+                            })
+            except Exception as e:
+                logger.warning(f"Emotion analysis failed: {e}")
+        
+        # Create emotion analysis object
+        emotion_analysis = {
+            "emotions": emotions,
+            "fraud_indicators": fraud_indicators,
+            "emotion_fraud_score": sum([indicator["confidence"] for indicator in fraud_indicators]),
+            "model_used": "cardiffnlp/twitter-roberta-base-emotion",
+            "text_analyzed": len(text),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # Create pattern analysis object
+        pattern_analysis = {
+            "patterns": fraud_analysis["patterns"],
+            "pattern_fraud_score": fraud_analysis["fraud_score"]
+        }
+        
         result = {
             "text_length": len(text),
             "fraud_score": fraud_analysis["fraud_score"],
             "fraud_risk_level": fraud_analysis["risk_level"],
             "detected_patterns": fraud_analysis["patterns"],
             "analysis_time_ms": fraud_analysis["processing_time"],
+            "emotion_analysis": emotion_analysis,
+            "pattern_analysis": pattern_analysis,
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -338,6 +390,99 @@ async def get_fraud_patterns(token: str = Depends(security)):
         
     except Exception as e:
         logger.error(f"Error getting fraud patterns: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/ask-document")
+async def ask_document(
+    question: str = Form(...),
+    document_text: str = Form(...),
+    token: str = Depends(security)
+):
+    """
+    Ask a question about a document using Document Question Answering
+    """
+    try:
+        logger.info(f"Processing document question: {question[:50]}...")
+        
+        if not document_qa_service or document_qa_service == "limited":
+            raise HTTPException(
+                status_code=503,
+                detail="Document QA service not available"
+            )
+        
+        # Use the Document QA service to answer the question
+        result = document_qa_service.answer_question(question, document_text)
+        
+        return {
+            "question": question,
+            "answer": result["answer"],
+            "confidence": result["confidence"],
+            "start_position": result.get("start_position", 0),
+            "end_position": result.get("end_position", 0),
+            "context_used": result.get("context_used", ""),
+            "model_used": result.get("model_used", "unknown"),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing document question: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze-document-fraud")
+async def analyze_document_fraud(
+    document_text: str = Form(...),
+    token: str = Depends(security)
+):
+    """
+    Analyze a document for fraud using predefined questions
+    """
+    try:
+        logger.info("Analyzing document for fraud using QA...")
+        
+        if not document_qa_service or document_qa_service == "limited":
+            raise HTTPException(
+                status_code=503,
+                detail="Document QA service not available"
+            )
+        
+        # Use the Document QA service for fraud analysis
+        result = document_qa_service.analyze_document_for_fraud_questions(document_text)
+        
+        return {
+            "document_length": len(document_text),
+            "fraud_analysis": result["fraud_analysis"],
+            "overall_risk": result["overall_risk"],
+            "total_risk_score": result["total_risk_score"],
+            "questions_analyzed": result["questions_analyzed"],
+            "model_used": result["model_used"],
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error analyzing document for fraud: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/qa-model-info")
+async def get_qa_model_info(token: str = Depends(security)):
+    """
+    Get information about the Document QA model
+    """
+    try:
+        if not document_qa_service or document_qa_service == "limited":
+            return {
+                "model_available": False,
+                "error": "Document QA service not available"
+            }
+        
+        model_info = document_qa_service.get_model_info()
+        return {
+            "model_available": True,
+            "model_info": model_info,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting QA model info: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Helper functions for AI processing

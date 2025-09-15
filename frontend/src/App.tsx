@@ -9,6 +9,7 @@ import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import DocumentUpload from './pages/DocumentUpload';
 import FraudAnalysis from './pages/FraudAnalysis';
+import DocumentQA from './pages/DocumentQA';
 import Reports from './pages/Reports';
 
 // Create a client
@@ -25,6 +26,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/upload" element={<DocumentUpload />} />
               <Route path="/analysis" element={<FraudAnalysis />} />
+              <Route path="/qa" element={<DocumentQA />} />
               <Route path="/reports" element={<Reports />} />
             </Routes>
           </main>
