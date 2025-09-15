@@ -288,85 +288,18 @@ This system uses a **hybrid AI approach** that combines:
 
 ---
 
-## 📊 **API Documentation**
+## 🔧 **Technical Details**
 
-### **Document Management**
-```bash
-# Upload document
-POST /api/v1/documents/upload
-Content-Type: multipart/form-data
+### **API Endpoints**
+- Document upload and management
+- Real-time fraud analysis
+- Health monitoring
+- Document Q&A functionality
 
-# Get all documents
-GET /api/v1/documents/
-
-# Get specific document
-GET /api/v1/documents/:id
-```
-
-### **Fraud Analysis**
-```bash
-# Analyze text for fraud
-POST /analyze-text
-Content-Type: application/json
-{
-  "text": "URGENT: Please wire transfer $50,000..."
-}
-```
-
-### **Health Checks**
-```bash
-# Backend health
-GET /health
-
-# AI service health
-GET /health
-```
-
----
-
-## 🗄️ **Database Schema**
-
-### **Documents Table**
-```sql
-CREATE TABLE documents (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id),
-    filename VARCHAR(255) NOT NULL,
-    original_filename VARCHAR(255) NOT NULL,
-    file_path VARCHAR(500) NOT NULL,
-    file_size INTEGER NOT NULL,
-    mime_type VARCHAR(100),
-    document_type VARCHAR(100),
-    status VARCHAR(50) DEFAULT 'uploaded',
-    fraud_score DECIMAL(3,2),
-    fraud_risk_level VARCHAR(20) DEFAULT 'low',
-    extracted_text TEXT,
-    emotion_analysis JSONB,
-    pattern_analysis JSONB,
-    metadata JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### **Emotion Analysis JSONB Structure**
-```json
-{
-  "emotions": [
-    {"emotion": "joy", "confidence": 0.707},
-    {"emotion": "anger", "confidence": 0.084}
-  ],
-  "fraud_indicators": [
-    {
-      "emotion": "anger",
-      "confidence": 0.084,
-      "reason": "Anger can indicate frustration or manipulation"
-    }
-  ],
-  "emotion_fraud_score": 0.0,
-  "model_used": "cardiffnlp/twitter-roberta-base-emotion"
-}
-```
+### **Database Design**
+- PostgreSQL with JSONB for flexible data storage
+- Optimized schema for fraud detection data
+- Efficient indexing for performance
 
 ---
 
@@ -375,22 +308,17 @@ CREATE TABLE documents (
 ### **Project Structure**
 ```
 frauddocai/
-├── frontend/          # React frontend application
-├── backend/           # Go backend API
-├── ai-service/        # Python AI service
-├── database/          # Database schema and migrations
-├── docs/             # Documentation and demo materials
-├── scripts/          # Development and deployment scripts
-└── docker-compose.yml # Infrastructure services
+├── frontend/            # React frontend application
+├── backend/             # Go backend API
+├── ai-service/          # Python AI service
+├── database/            # Database schema and migrations
+└── docker-compose.yml   # Infrastructure services
 ```
 
-### **Key Commands**
+### **Quick Start**
 ```bash
 # Start all services
 ./scripts/start-dev.sh
-
-# Stop all services
-./scripts/stop-dev.sh
 
 # Run tests
 cd backend && go test ./...
@@ -432,48 +360,6 @@ cd ai-service && python -m pytest
 
 ---
 
-## 📈 **Performance & Scalability**
-
-### **Optimizations**
-- **Database Indexing** - Optimized queries with proper indexes
-- **Connection Pooling** - Efficient database connections
-- **Async Processing** - Background fraud analysis
-- **Caching** - MinIO for document storage
-
-### **Scalability Features**
-- **Microservices** - Independent scaling of components
-- **Docker** - Containerized deployment
-- **Database Design** - Normalized schema for performance
-- **API Design** - RESTful endpoints for integration
-
----
-
-## 🔒 **Security**
-
-### **Security Measures**
-- **Input Validation** - File type and size validation
-- **SQL Injection Prevention** - Parameterized queries
-- **CORS Configuration** - Cross-origin request handling
-- **Error Sanitization** - Safe error messages
-
----
-
-## 📝 **Contributing**
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 📄 **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
 ## 👨‍💻 **Author**
 
 **Jeremy Petty**
@@ -482,25 +368,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 🙏 **Acknowledgments**
-
-- [Hugging Face](https://huggingface.co/) for pre-trained models
-- [React](https://reactjs.org/) for the frontend framework
-- [Go](https://golang.org/) for the backend language
-- [FastAPI](https://fastapi.tiangolo.com/) for the AI service framework
-
----
-
-## 📊 **Project Statistics**
-
-- **Lines of Code:** ~3,000+
-- **Technologies Used:** 10+ (including Hugging Face)
-- **AI Models:** 3 (cardiffnlp/twitter-roberta-base-emotion, distilbert-base-uncased-distilled-squad, all-MiniLM-L6-v2)
-- **Services:** 3 microservices
-- **Database Tables:** 6 (with JSONB fields)
-- **API Endpoints:** 12+
-- **Test Coverage:** 85%+
-
----
-
-*FraudDocAI demonstrates advanced full-stack development skills, AI integration, and production-ready system architecture.*
+*This portfolio project demonstrates modern full-stack development, AI/ML integration, and production-ready software engineering practices.*
