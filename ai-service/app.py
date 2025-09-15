@@ -11,31 +11,15 @@ import logging
 from typing import List, Dict, Any
 import asyncio
 from datetime import datetime
+from PIL import Image, ImageEnhance, ImageFilter
+import io
+from contextlib import asynccontextmanager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
-app = FastAPI(
-    title="FraudDocAI AI Service",
-    description="AI-powered document fraud detection service",
-    version="1.0.0"
-)
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8080"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Security
-security = HTTPBearer()
-
-# Global variables for models (will be loaded on startup)
+# Global variables for AI models
 document_processor = None
 fraud_detector = None
 embedding_model = None
@@ -43,9 +27,9 @@ text_classifier = None
 question_answering_model = None
 document_qa_service = None
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize AI models on startup"""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize AI models on startup and cleanup on shutdown"""
     global document_processor, fraud_detector, embedding_model, text_classifier, question_answering_model, document_qa_service
     
     logger.info("Starting FraudDocAI AI Service...")
@@ -76,10 +60,10 @@ async def startup_event():
         logger.info("Loading question answering model...")
         question_answering_model = pipeline(
             "question-answering",
-            model="distilbert-base-uncased-distilled-squad"  # Lighter version
+            model="distilbert-base-uncased-distilled-squad"
         )
         
-        # 3. Sentence Embeddings for similarity search
+        # 3. Sentence Embeddings
         logger.info("Loading sentence transformer...")
         embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
         
@@ -87,12 +71,12 @@ async def startup_event():
         logger.info("Initializing document processor...")
         document_processor = "ready"  # We'll implement OCR functionality
         
-        # 5. Fraud detector (combination of models)
+        # 5. Fraud detector (emotion + pattern analysis)
         logger.info("Initializing fraud detector...")
-        fraud_detector = "ready"
+        fraud_detector = "ready"  # We'll implement fraud detection
         
-        # 6. Document Question Answering Service
-        logger.info("Initializing Document QA service...")
+        # 6. Document QA Service
+        logger.info("Initializing document QA service...")
         from document_qa_service import DocumentQuestionAnsweringService
         document_qa_service = DocumentQuestionAnsweringService()
         
@@ -109,6 +93,32 @@ async def startup_event():
         text_classifier = "limited"
         question_answering_model = "limited"
         document_qa_service = "limited"
+    
+    yield  # This is where the app runs
+    
+    # Cleanup on shutdown
+    logger.info("Shutting down AI Service...")
+
+# Initialize FastAPI app with lifespan
+app = FastAPI(
+    title="FraudDocAI AI Service",
+    description="AI-powered document fraud detection service",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:8080"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Security
+security = HTTPBearer()
+
 
 @app.get("/")
 async def root():

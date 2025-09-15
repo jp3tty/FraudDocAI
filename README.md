@@ -118,6 +118,8 @@ pip install -r requirements.txt
 python app.py
 ```
 
+**Note:** The AI service will automatically load Hugging Face models on startup. This may take 1-2 minutes on first run as models are downloaded and cached.
+
 ### **5. Start Frontend**
 ```bash
 cd frontend
