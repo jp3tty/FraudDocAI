@@ -40,6 +40,15 @@ export interface PatternAnalysis {
   pattern_fraud_score: number;
 }
 
+export interface OCRQuality {
+  confidence_score: number;
+  quality_level: string;
+  preprocessing_applied: boolean;
+  text_blocks: number;
+  processing_notes: string;
+  file_type: string;
+}
+
 export interface Document {
   id: string;
   user_id: string | null;
@@ -55,6 +64,7 @@ export interface Document {
   extracted_text: string | null;
   emotion_analysis?: EmotionAnalysis;
   pattern_analysis?: PatternAnalysis;
+  ocr_quality?: OCRQuality;
   metadata: any;
   created_at: string;
   updated_at: string;

@@ -15,6 +15,41 @@ interface UploadedFile {
   fileUrl?: string;
 }
 
+// Helper functions for OCR quality display
+const getQualityBadgeClass = (qualityLevel: string): string => {
+  switch (qualityLevel) {
+    case 'excellent':
+      return 'bg-green-100 text-green-800';
+    case 'good':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'fair':
+      return 'bg-orange-100 text-orange-800';
+    case 'poor':
+      return 'bg-red-100 text-red-800';
+    case 'failed':
+      return 'bg-gray-100 text-gray-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const getQualityBarClass = (qualityLevel: string): string => {
+  switch (qualityLevel) {
+    case 'excellent':
+      return 'bg-green-500';
+    case 'good':
+      return 'bg-yellow-500';
+    case 'fair':
+      return 'bg-orange-500';
+    case 'poor':
+      return 'bg-red-500';
+    case 'failed':
+      return 'bg-gray-500';
+    default:
+      return 'bg-gray-500';
+  }
+};
+
 const DocumentUpload: React.FC = () => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -257,6 +292,48 @@ const DocumentUpload: React.FC = () => {
                       <p className="text-sm font-medium text-gray-700 mb-2">Extracted Text:</p>
                       <div className="bg-gray-50 p-3 rounded text-sm text-gray-600 max-h-32 overflow-y-auto">
                         {doc.extracted_text}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* OCR Quality Indicators */}
+                  {doc.ocr_quality && (
+                    <div className="mt-3 border-t pt-3">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                        <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                        OCR Quality Analysis
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="bg-blue-50 p-3 rounded">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-gray-600">Confidence Score</span>
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${getQualityBadgeClass(doc.ocr_quality.quality_level)}`}>
+                              {doc.ocr_quality.confidence_score}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full ${getQualityBarClass(doc.ocr_quality.quality_level)}`}
+                              style={{ width: `${Math.min(doc.ocr_quality.confidence_score, 100)}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-blue-50 p-3 rounded">
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Quality Level:</span> {doc.ocr_quality.quality_level.toUpperCase()}
+                          </div>
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Text Blocks:</span> {doc.ocr_quality.text_blocks}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            <span className="font-medium">Preprocessing:</span> {doc.ocr_quality.preprocessing_applied ? 'Applied' : 'Not needed'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                        <span className="font-medium">Processing Notes:</span> {doc.ocr_quality.processing_notes}
                       </div>
                     </div>
                   )}

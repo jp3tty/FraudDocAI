@@ -76,8 +76,7 @@
 - **Async Processing:** FastAPI for high-performance API
 
 **Key Files:**
-- `simple_app.py` - Main AI service application
-- `app.py` - Production version with authentication
+- `app.py` - Main AI service application with full OCR capabilities and authentication
 
 ### **4. Database (PostgreSQL)**
 **Location:** `database/init.sql`

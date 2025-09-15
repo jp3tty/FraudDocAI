@@ -25,6 +25,7 @@ FraudDocAI helps businesses protect themselves from financial scams and document
 - 🏗️ **Microservices Architecture** - Scalable, production-ready design
 - ❓ **Document Q&A** - Ask questions about documents and get AI-powered answers
 - 📈 **Comprehensive Analysis** - Both emotion analysis and pattern detection
+- 🔍 **Enhanced OCR** - Quality scoring, image preprocessing, and confidence indicators
 
 ---
 
@@ -46,6 +47,7 @@ FraudDocAI helps businesses protect themselves from financial scams and document
 - ✅ **Document Q&A Service** - AI-powered question answering working
 - ✅ **Production-Ready System** - Robust error handling and service coordination
 - ✅ **End-to-End Pipeline** - Complete document upload → analysis → storage → display
+- ✅ **Enhanced OCR Quality** - Confidence scoring, image preprocessing, and quality indicators
 
 ---
 
@@ -113,7 +115,7 @@ cd ai-service
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python simple_app.py
+python app.py
 ```
 
 ### **5. Start Frontend**
@@ -173,6 +175,13 @@ ls -la *.txt
 - **Confidentiality Claims** - "CONFIDENTIAL", "Do not share"
 - **Payment Methods** - "Wire transfer only", "Offshore account"
 - **Suspicious Amounts** - Large sums with urgency
+
+### **OCR Quality Enhancement**
+- **Confidence Scoring** - Real Tesseract confidence data analysis (0-100%)
+- **Image Preprocessing** - Automatic contrast enhancement, noise reduction, and sharpening
+- **Quality Levels** - Excellent (90%+), Good (70-89%), Fair (50-69%), Poor (<50%)
+- **Visual Indicators** - Color-coded quality badges and progress bars in UI
+- **User Guidance** - Clear feedback on when to re-upload documents for better results
 
 ### **Implementation Approach**
 This system uses a **hybrid AI approach** that combines:

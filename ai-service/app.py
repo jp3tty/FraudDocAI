@@ -171,8 +171,9 @@ async def process_document(
         # Read file content
         content = await file.read()
         
-        # Extract text from document
-        extracted_text = await extract_text_from_document(content, file.content_type)
+        # Extract text from document with quality enhancement
+        ocr_result = await extract_text_with_quality_enhancement(content, file.content_type)
+        extracted_text = ocr_result["extracted_text"]
         
         # Analyze text for fraud patterns using AI models
         fraud_analysis = await analyze_text_for_fraud(extracted_text)
@@ -187,7 +188,16 @@ async def process_document(
             "fraud_risk_level": fraud_analysis["risk_level"],
             "detected_patterns": fraud_analysis["patterns"],
             "processing_time_ms": fraud_analysis["processing_time"],
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
+            # OCR Quality Data
+            "ocr_quality": {
+                "confidence_score": ocr_result["confidence_score"],
+                "quality_level": ocr_result["quality_level"],
+                "preprocessing_applied": ocr_result["preprocessing_applied"],
+                "text_blocks": ocr_result["text_blocks"],
+                "processing_notes": ocr_result["processing_notes"],
+                "file_type": ocr_result["file_type"]
+            }
         }
         
         logger.info(f"Document processed successfully: {file.filename}")
@@ -521,6 +531,153 @@ async def extract_text_from_document(content: bytes, content_type: str) -> str:
     except Exception as e:
         logger.error(f"Error extracting text: {e}")
         return "Error extracting text from document"
+
+async def extract_text_with_quality_enhancement(content: bytes, content_type: str) -> dict:
+    """Extract text with quality enhancements and confidence scoring"""
+    try:
+        if content_type == "application/pdf":
+            import PyPDF2
+            import io
+            pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
+            text = ""
+            page_count = len(pdf_reader.pages)
+            for page in pdf_reader.pages:
+                text += page.extract_text() + "\n"
+            
+            return {
+                "extracted_text": text.strip(),
+                "confidence_score": 95.0,  # PDF text extraction is typically very reliable
+                "quality_level": "excellent",
+                "preprocessing_applied": False,
+                "text_blocks": page_count,
+                "processing_notes": "PDF text extraction - high reliability",
+                "file_type": "pdf"
+            }
+        
+        elif content_type in ["image/jpeg", "image/png", "image/tiff"]:
+            import pytesseract
+            from PIL import Image, ImageEnhance, ImageFilter
+            import io
+            
+            # Preprocess image for better OCR
+            processed_image = preprocess_image_for_ocr(content)
+            
+            # Extract text with confidence data
+            ocr_data = pytesseract.image_to_data(
+                processed_image, 
+                output_type=pytesseract.Output.DICT,
+                config='--psm 6'  # Assume single text block
+            )
+            
+            # Calculate confidence scores
+            confidences = [int(conf) for conf in ocr_data['conf'] if int(conf) > 0]
+            avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+            
+            # Extract text
+            text = pytesseract.image_to_string(processed_image)
+            
+            return {
+                "extracted_text": text.strip(),
+                "confidence_score": round(avg_confidence, 1),
+                "quality_level": get_quality_level(avg_confidence),
+                "preprocessing_applied": True,
+                "text_blocks": len(confidences),
+                "processing_notes": get_processing_notes(avg_confidence),
+                "file_type": "image"
+            }
+        
+        elif content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            from docx import Document
+            import io
+            doc = Document(io.BytesIO(content))
+            text = ""
+            paragraph_count = 0
+            for paragraph in doc.paragraphs:
+                if paragraph.text.strip():
+                    text += paragraph.text + "\n"
+                    paragraph_count += 1
+            
+            return {
+                "extracted_text": text.strip(),
+                "confidence_score": 98.0,  # Word documents have very reliable text extraction
+                "quality_level": "excellent",
+                "preprocessing_applied": False,
+                "text_blocks": paragraph_count,
+                "processing_notes": "Word document text extraction - very high reliability",
+                "file_type": "docx"
+            }
+        
+        else:
+            return {
+                "extracted_text": "Unsupported file type for text extraction",
+                "confidence_score": 0.0,
+                "quality_level": "failed",
+                "preprocessing_applied": False,
+                "text_blocks": 0,
+                "processing_notes": "File type not supported for text extraction",
+                "file_type": "unsupported"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error in enhanced OCR: {e}")
+        return {
+            "extracted_text": "OCR processing failed",
+            "confidence_score": 0.0,
+            "quality_level": "failed",
+            "preprocessing_applied": False,
+            "text_blocks": 0,
+            "processing_notes": f"Error during text extraction: {str(e)}",
+            "file_type": "error"
+        }
+
+def preprocess_image_for_ocr(image_bytes: bytes) -> Image:
+    """Enhance image quality for better OCR results"""
+    try:
+        # Open image
+        image = Image.open(io.BytesIO(image_bytes))
+        
+        # Convert to grayscale if not already
+        if image.mode != 'L':
+            image = image.convert('L')
+        
+        # Enhance contrast
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(1.5)  # Increase contrast by 50%
+        
+        # Reduce noise (simple approach)
+        image = image.filter(ImageFilter.MedianFilter(size=3))
+        
+        # Sharpen text
+        image = image.filter(ImageFilter.SHARPEN)
+        
+        return image
+        
+    except Exception as e:
+        logger.error(f"Image preprocessing failed: {e}")
+        # Return original image if preprocessing fails
+        return Image.open(io.BytesIO(image_bytes))
+
+def get_quality_level(confidence: float) -> str:
+    """Determine quality level based on confidence score"""
+    if confidence >= 90:
+        return "excellent"
+    elif confidence >= 70:
+        return "good"
+    elif confidence >= 50:
+        return "fair"
+    else:
+        return "poor"
+
+def get_processing_notes(confidence: float) -> str:
+    """Generate user-friendly processing notes"""
+    if confidence >= 90:
+        return "High quality text extraction - ready for analysis"
+    elif confidence >= 70:
+        return "Good text extraction - minor quality issues detected"
+    elif confidence >= 50:
+        return "Fair text extraction - some text may need manual review"
+    else:
+        return "Poor text extraction - consider uploading a clearer image"
 
 async def analyze_text_for_fraud(text: str) -> dict:
     """Analyze text for fraud patterns using AI models"""
