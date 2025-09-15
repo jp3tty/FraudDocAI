@@ -108,6 +108,15 @@ class Config:
             'cors': self.get_cors_config(),
             'ai': self.get_ai_config()
         }
+    
+    def get_base_url(self, protocol: str = "http") -> str:
+        """Get base URL for the service"""
+        server_config = self.get_server_config()
+        return f"{protocol}://{server_config['host']}:{server_config['port']}"
+    
+    def get_health_url(self, protocol: str = "http") -> str:
+        """Get health check URL for the service"""
+        return f"{self.get_base_url(protocol)}/health"
 
 # Global config instance
 config = Config()

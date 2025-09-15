@@ -24,6 +24,10 @@ def test_default_config():
     print(f"Emotion Model: {ai_config['emotion_model']}")
     print(f"QA Model: {ai_config['qa_model']}")
     print(f"Embedding Model: {ai_config['embedding_model']}")
+    
+    # Test dynamic URL building
+    print(f"Base URL: {config.get_base_url()}")
+    print(f"Health URL: {config.get_health_url()}")
     print()
 
 def test_environment_override():
@@ -72,7 +76,11 @@ def test_health_endpoint():
     
     try:
         import requests
-        response = requests.get('http://localhost:8001/health', timeout=5)
+        # Get dynamic health URL from configuration
+        health_url = config.get_health_url()
+        print(f"Testing health endpoint: {health_url}")
+        
+        response = requests.get(health_url, timeout=5)
         if response.status_code == 200:
             data = response.json()
             print("✅ AI Service is running")

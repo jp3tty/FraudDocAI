@@ -37,6 +37,22 @@ nano config.ini
 python app.py
 ```
 
+### Dynamic URL Building
+```python
+from config import config
+
+# Get dynamic URLs based on configuration
+base_url = config.get_base_url()        # http://0.0.0.0:8001
+health_url = config.get_health_url()    # http://0.0.0.0:8001/health
+
+# With custom protocol
+https_url = config.get_base_url("https")  # https://0.0.0.0:8001
+
+# URLs automatically adapt to environment variables
+# FRAUDDOCAI_PORT=9001 → http://0.0.0.0:9001
+# FRAUDDOCAI_HOST=127.0.0.1 → http://127.0.0.1:8001
+```
+
 ## 📋 Configuration Options
 
 ### Environment Variables
