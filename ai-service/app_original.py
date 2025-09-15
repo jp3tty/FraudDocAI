@@ -14,7 +14,6 @@ from datetime import datetime
 from PIL import Image, ImageEnhance, ImageFilter
 import io
 from contextlib import asynccontextmanager
-from config import config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -35,9 +34,6 @@ async def lifespan(app: FastAPI):
     
     logger.info("Starting FraudDocAI AI Service...")
     
-    # Get AI model configuration
-    ai_config = config.get_ai_config()
-    
     try:
         # Initialize models with real Hugging Face models
         logger.info("Loading AI models...")
@@ -53,23 +49,23 @@ async def lifespan(app: FastAPI):
         from sentence_transformers import SentenceTransformer
         
         # 1. Text Classification for fraud detection
-        logger.info(f"Loading fraud detection classifier: {ai_config['emotion_model']}")
+        logger.info("Loading fraud detection classifier...")
         text_classifier = pipeline(
             "text-classification",
-            model=ai_config['emotion_model'],
+            model="cardiffnlp/twitter-roberta-base-emotion",  # Lighter, more appropriate model
             return_all_scores=True
         )
         
         # 2. Document Question Answering
-        logger.info(f"Loading question answering model: {ai_config['qa_model']}")
+        logger.info("Loading question answering model...")
         question_answering_model = pipeline(
             "question-answering",
-            model=ai_config['qa_model']
+            model="distilbert-base-uncased-distilled-squad"
         )
         
         # 3. Sentence Embeddings
-        logger.info(f"Loading sentence transformer: {ai_config['embedding_model']}")
-        embedding_model = SentenceTransformer(ai_config['embedding_model'])
+        logger.info("Loading sentence transformer...")
+        embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
         
         # 4. Document processor (OCR + text extraction)
         logger.info("Initializing document processor...")
@@ -111,15 +107,18 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware with configuration
-cors_config = config.get_cors_config()
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    **cors_config
+    allow_origins=["http://localhost:3000", "http://localhost:8080"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Security
 security = HTTPBearer()
+
 
 @app.get("/")
 async def root():
@@ -127,30 +126,30 @@ async def root():
     return {
         "service": "FraudDocAI AI Service",
         "status": "running",
-        "version": "1.0.0",
-        "config": {
-            "server": config.get_server_config(),
-            "ai_models": config.get_ai_config()
-        }
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0"
     }
 
 @app.get("/health")
 async def health_check():
-    """Detailed health check endpoint"""
-    global document_processor, fraud_detector, embedding_model, text_classifier, question_answering_model, document_qa_service
-    
+    """Detailed health check"""
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "services": {
-            "document_processor": "ready" if document_processor == "ready" else "limited",
-            "fraud_detector": "ready" if fraud_detector == "ready" else "limited",
-            "embedding_model": "ready" if embedding_model and embedding_model != "limited" else "limited",
-            "text_classifier": "ready" if text_classifier and text_classifier != "limited" else "limited",
-            "question_answering": "ready" if question_answering_model and question_answering_model != "limited" else "limited",
-            "document_qa_service": "ready" if document_qa_service and document_qa_service != "limited" else "limited"
+        "models_loaded": {
+            "document_processor": document_processor is not None,
+            "fraud_detector": fraud_detector is not None,
+            "embedding_model": embedding_model is not None,
+            "text_classifier": text_classifier is not None,
+            "question_answering": question_answering_model is not None,
+            "document_qa_service": document_qa_service is not None
         },
-        "configuration": config.get_all_config()
+        "model_details": {
+            "text_classifier": str(type(text_classifier).__name__) if text_classifier else "Not loaded",
+            "question_answering": str(type(question_answering_model).__name__) if question_answering_model else "Not loaded",
+            "embedding_model": str(type(embedding_model).__name__) if embedding_model else "Not loaded",
+            "document_qa_service": str(type(document_qa_service).__name__) if document_qa_service else "Not loaded"
+        },
+        "timestamp": datetime.utcnow().isoformat()
     }
 
 @app.post("/process-document")
@@ -224,26 +223,66 @@ async def analyze_text(
     token: str = Depends(security)
 ):
     """
-    Analyze text for fraud patterns using AI models
+    Analyze text for fraud patterns
     """
     try:
-        logger.info(f"Analyzing text: {len(text)} characters")
+        logger.info("Analyzing text for fraud patterns")
         
-        # Analyze text for fraud patterns
+        # Use real AI analysis
         fraud_analysis = await analyze_text_for_fraud(text)
+        
+        # Create detailed emotion analysis response
+        emotions = []
+        fraud_indicators = []
+        
+        # Extract emotion data from the classification result
+        if text_classifier and text_classifier != "limited":
+            try:
+                classification_result = text_classifier(text[:512])
+                if classification_result and len(classification_result) > 0:
+                    for result in classification_result[0]:
+                        emotions.append({
+                            "emotion": result["label"],
+                            "confidence": result["score"]
+                        })
+                        
+                        # Check for fraud indicators based on emotions
+                        if any(word in result["label"].lower() for word in ["anger", "fear", "sadness"]):
+                            fraud_indicators.append({
+                                "emotion": result["label"],
+                                "confidence": result["score"],
+                                "reason": f"Suspicious emotional tone detected: {result['label']}"
+                            })
+            except Exception as e:
+                logger.warning(f"Emotion analysis failed: {e}")
+        
+        # Create emotion analysis object
+        emotion_analysis = {
+            "emotions": emotions,
+            "fraud_indicators": fraud_indicators,
+            "emotion_fraud_score": sum([indicator["confidence"] for indicator in fraud_indicators]),
+            "model_used": "cardiffnlp/twitter-roberta-base-emotion",
+            "text_analyzed": len(text),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # Create pattern analysis object
+        pattern_analysis = {
+            "patterns": fraud_analysis["patterns"],
+            "pattern_fraud_score": fraud_analysis["fraud_score"]
+        }
         
         result = {
             "text_length": len(text),
             "fraud_score": fraud_analysis["fraud_score"],
-            "risk_level": fraud_analysis["risk_level"],
-            "patterns": fraud_analysis["patterns"],
-            "emotion_analysis": fraud_analysis.get("emotion_analysis", {}),
-            "pattern_analysis": fraud_analysis.get("pattern_analysis", {}),
-            "processing_time_ms": fraud_analysis["processing_time"],
+            "fraud_risk_level": fraud_analysis["risk_level"],
+            "detected_patterns": fraud_analysis["patterns"],
+            "analysis_time_ms": fraud_analysis["processing_time"],
+            "emotion_analysis": emotion_analysis,
+            "pattern_analysis": pattern_analysis,
             "timestamp": datetime.utcnow().isoformat()
         }
         
-        logger.info(f"Text analysis completed: {fraud_analysis['risk_level']} risk")
         return result
         
     except Exception as e:
@@ -252,51 +291,80 @@ async def analyze_text(
 
 @app.post("/generate-embeddings")
 async def generate_embeddings(
-    text: str,
+    texts: List[str],
     token: str = Depends(security)
 ):
     """
-    Generate embeddings for text using sentence transformer
+    Generate embeddings for text documents
     """
     try:
-        logger.info(f"Generating embeddings for text: {len(text)} characters")
+        logger.info(f"Generating embeddings for {len(texts)} texts")
         
-        if embedding_model == "limited" or embedding_model is None:
-            raise HTTPException(
-                status_code=503,
-                detail="Embedding model not available"
-            )
-        
+        # Generate real embeddings using sentence transformers
+        embeddings = []
         start_time = datetime.utcnow()
         
-        try:
-            # Generate embeddings
-            embeddings = embedding_model.encode(text)
-            generation_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-            
-            result = {
-                "text": text[:100] + "..." if len(text) > 100 else text,
-                "embeddings": embeddings.tolist(),
-                "embedding_dimension": len(embeddings),
-                "generation_time_ms": round(generation_time, 2),
-                "timestamp": datetime.utcnow().isoformat()
-            }
-        except Exception as e:
-            logger.error(f"Error generating embeddings: {e}")
-            # Fallback to mock embeddings
+        if embedding_model and hasattr(embedding_model, 'encode'):
+            try:
+                # Generate embeddings for all texts
+                text_embeddings = embedding_model.encode(texts)
+                
+                for i, (text, embedding) in enumerate(zip(texts, text_embeddings)):
+                    embeddings.append({
+                        "text_index": i,
+                        "text": text[:100] + "..." if len(text) > 100 else text,
+                        "embedding": embedding.tolist(),
+                        "embedding_dimension": len(embedding)
+                    })
+                
+                generation_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                
+                result = {
+                    "embeddings": embeddings,
+                    "model_used": "sentence-transformers/all-MiniLM-L6-v2",
+                    "generation_time_ms": round(generation_time, 2),
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            except Exception as e:
+                logger.error(f"Error generating embeddings: {e}")
+                # Fallback to mock embeddings
+                embeddings = []
+                for i, text in enumerate(texts):
+                    embedding = [0.1] * 384
+                    embeddings.append({
+                        "text_index": i,
+                        "text": text[:100] + "..." if len(text) > 100 else text,
+                        "embedding": embedding,
+                        "embedding_dimension": 384
+                    })
+                
+                result = {
+                    "embeddings": embeddings,
+                    "model_used": "fallback-mock",
+                    "generation_time_ms": 0,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "error": "Model not available, using fallback"
+                }
+        else:
+            # Fallback when model not loaded
             embeddings = []
-            generation_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            for i, text in enumerate(texts):
+                embedding = [0.1] * 384
+                embeddings.append({
+                    "text_index": i,
+                    "text": text[:100] + "..." if len(text) > 100 else text,
+                    "embedding": embedding,
+                    "embedding_dimension": 384
+                })
             
             result = {
-                "text": text[:100] + "..." if len(text) > 100 else text,
-                "embeddings": [],
-                "embedding_dimension": 0,
-                "generation_time_ms": round(generation_time, 2),
-                "error": "Embedding generation failed",
-                "timestamp": datetime.utcnow().isoformat()
+                "embeddings": embeddings,
+                "model_used": "fallback-mock",
+                "generation_time_ms": 0,
+                "timestamp": datetime.utcnow().isoformat(),
+                "error": "Embedding model not loaded"
             }
         
-        logger.info(f"Embeddings generated: {len(embeddings)} dimensions")
         return result
         
     except Exception as e:
@@ -309,32 +377,34 @@ async def get_fraud_patterns(token: str = Depends(security)):
     Get available fraud detection patterns
     """
     try:
+        # TODO: Load from database
         patterns = [
             {
-                "pattern": "urgency_indicators",
-                "keywords": ["urgent", "immediate", "asap", "emergency", "critical"],
-                "description": "Detects urgent language that may indicate pressure tactics"
+                "id": "signature_forgery",
+                "name": "Signature Forgery",
+                "description": "Detects potentially forged signatures",
+                "severity": "high",
+                "confidence_threshold": 0.8
             },
             {
-                "pattern": "confidentiality_claims",
-                "keywords": ["confidential", "secret", "do not share", "private"],
-                "description": "Identifies claims of confidentiality that may be manipulative"
+                "id": "amount_tampering",
+                "name": "Amount Tampering",
+                "description": "Detects altered monetary amounts",
+                "severity": "critical",
+                "confidence_threshold": 0.9
             },
             {
-                "pattern": "payment_methods",
-                "keywords": ["wire transfer", "offshore", "bitcoin", "gift cards"],
-                "description": "Detects suspicious payment methods commonly used in fraud"
-            },
-            {
-                "pattern": "amount_tampering",
-                "keywords": ["amount", "total", "sum", "cost", "price"],
-                "description": "Identifies potential manipulation of monetary amounts"
+                "id": "duplicate_invoice",
+                "name": "Duplicate Invoice",
+                "description": "Identifies duplicate invoices",
+                "severity": "medium",
+                "confidence_threshold": 0.95
             }
         ]
         
         return {
             "patterns": patterns,
-            "total_patterns": len(patterns),
+            "total_count": len(patterns),
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -342,38 +412,37 @@ async def get_fraud_patterns(token: str = Depends(security)):
         logger.error(f"Error getting fraud patterns: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/document-qa")
-async def document_qa(
+@app.post("/ask-document")
+async def ask_document(
     question: str = Form(...),
     document_text: str = Form(...),
     token: str = Depends(security)
 ):
     """
-    Answer questions about a document using AI
+    Ask a question about a document using Document Question Answering
     """
     try:
-        logger.info(f"Processing document Q&A: {len(question)} char question, {len(document_text)} char document")
+        logger.info(f"Processing document question: {question[:50]}...")
         
-        if document_qa_service == "limited" or document_qa_service is None:
+        if not document_qa_service or document_qa_service == "limited":
             raise HTTPException(
                 status_code=503,
                 detail="Document QA service not available"
             )
         
-        # Process the question
-        answer = document_qa_service.answer_question(question, document_text)
+        # Use the Document QA service to answer the question
+        result = document_qa_service.answer_question(question, document_text)
         
-        result = {
+        return {
             "question": question,
-            "answer": answer["answer"],
-            "confidence": answer["confidence"],
-            "context_used": answer["context_used"],
-            "processing_time_ms": answer["processing_time_ms"],
+            "answer": result["answer"],
+            "confidence": result["confidence"],
+            "start_position": result.get("start_position", 0),
+            "end_position": result.get("end_position", 0),
+            "context_used": result.get("context_used", ""),
+            "model_used": result.get("model_used", "unknown"),
             "timestamp": datetime.utcnow().isoformat()
         }
-        
-        logger.info(f"Document Q&A completed: {answer['confidence']:.1%} confidence")
-        return result
         
     except Exception as e:
         logger.error(f"Error processing document question: {e}")
@@ -385,32 +454,29 @@ async def analyze_document_fraud(
     token: str = Depends(security)
 ):
     """
-    Comprehensive fraud analysis of a document
+    Analyze a document for fraud using predefined questions
     """
     try:
-        logger.info(f"Analyzing document for fraud: {len(document_text)} characters")
+        logger.info("Analyzing document for fraud using QA...")
         
-        if document_qa_service == "limited" or document_qa_service is None:
+        if not document_qa_service or document_qa_service == "limited":
             raise HTTPException(
                 status_code=503,
-                detail="Document analysis service not available"
+                detail="Document QA service not available"
             )
         
-        # Analyze the document
-        analysis = document_qa_service.analyze_document_fraud(document_text)
+        # Use the Document QA service for fraud analysis
+        result = document_qa_service.analyze_document_for_fraud_questions(document_text)
         
-        result = {
+        return {
             "document_length": len(document_text),
-            "fraud_risk_score": analysis["fraud_risk_score"],
-            "risk_level": analysis["risk_level"],
-            "key_indicators": analysis["key_indicators"],
-            "recommendations": analysis["recommendations"],
-            "processing_time_ms": analysis["processing_time_ms"],
+            "fraud_analysis": result["fraud_analysis"],
+            "overall_risk": result["overall_risk"],
+            "total_risk_score": result["total_risk_score"],
+            "questions_analyzed": result["questions_analyzed"],
+            "model_used": result["model_used"],
             "timestamp": datetime.utcnow().isoformat()
         }
-        
-        logger.info(f"Document fraud analysis completed: {analysis['risk_level']} risk")
-        return result
         
     except Exception as e:
         logger.error(f"Error analyzing document for fraud: {e}")
@@ -419,24 +485,20 @@ async def analyze_document_fraud(
 @app.get("/qa-model-info")
 async def get_qa_model_info(token: str = Depends(security)):
     """
-    Get information about the QA model
+    Get information about the Document QA model
     """
     try:
-        if document_qa_service == "limited" or document_qa_service is None:
+        if not document_qa_service or document_qa_service == "limited":
             return {
-                "model_loaded": False,
-                "model_name": "Not available",
-                "status": "limited"
+                "model_available": False,
+                "error": "Document QA service not available"
             }
         
         model_info = document_qa_service.get_model_info()
-        
         return {
-            "model_loaded": True,
-            "model_name": model_info["model_name"],
-            "model_type": model_info["model_type"],
-            "max_length": model_info["max_length"],
-            "status": "ready"
+            "model_available": True,
+            "model_info": model_info,
+            "timestamp": datetime.utcnow().isoformat()
         }
         
     except Exception as e:
@@ -632,105 +694,85 @@ async def analyze_text_for_fraud(text: str) -> dict:
     start_time = datetime.utcnow()
     
     try:
-        fraud_score = 0.0
+        # Initialize fraud patterns
         patterns = []
-        emotion_analysis = None
-        pattern_analysis = None
+        fraud_score = 0.0
         
-        # 1. Emotion-based analysis using Hugging Face model
+        # Check if models are loaded
         if text_classifier and text_classifier != "limited":
+            # 1. Text classification for suspicious content
             try:
-                emotion_results = text_classifier(text)
-                emotions = []
-                fraud_indicators = []
-                
-                for result in emotion_results:
-                    emotions.append({
-                        "emotion": result["label"],
-                        "confidence": result["score"]
-                    })
-                    
-                    # Check for fraud-indicating emotions
-                    if result["label"] in ["anger", "fear", "sadness"] and result["score"] > 0.3:
-                        fraud_indicators.append({
-                            "emotion": result["label"],
-                            "confidence": result["score"],
-                            "reason": f"Suspicious emotional tone detected: {result['label']}"
-                        })
-                        fraud_score += result["score"] * 0.2
-                
-                emotion_analysis = {
-                    "emotions": emotions,
-                    "fraud_indicators": fraud_indicators,
-                    "emotion_fraud_score": sum([ind["confidence"] for ind in fraud_indicators]) / len(fraud_indicators) if fraud_indicators else 0.0,
-                    "model_used": "cardiffnlp/twitter-roberta-base-emotion"
-                }
-            except Exception as e:
-                logger.warning(f"Emotion analysis failed: {e}")
-        
-        # 2. Pattern-based fraud detection
-        fraud_keywords = {
-            "urgency": ["urgent", "immediate", "asap", "emergency", "critical", "rush"],
-            "confidentiality": ["confidential", "secret", "do not share", "private", "exclusive"],
-            "payment": ["wire transfer", "offshore", "bitcoin", "gift cards", "western union"],
-            "amount": ["amount", "total", "sum", "cost", "price", "payment"]
-        }
-        
-        text_lower = text.lower()
-        pattern_scores = []
-        
-        for category, keywords in fraud_keywords.items():
-            matches = [keyword for keyword in keywords if keyword in text_lower]
-            if matches:
-                score = len(matches) / len(keywords)
-                pattern_scores.append({
-                    "pattern": category,
-                    "confidence": score,
-                    "description": f"Detected {len(matches)} {category} indicators"
-                })
-                patterns.extend(matches)
-                fraud_score += score * 0.3
-        
-        pattern_analysis = {
-            "patterns": pattern_scores,
-            "pattern_fraud_score": sum([p["confidence"] for p in pattern_scores]) / len(pattern_scores) if pattern_scores else 0.0
-        }
-        
-        # 3. Text classification for additional fraud detection
-        if text_classifier and text_classifier != "limited":
-            try:
-                classification_results = text_classifier(text)
-                for result in classification_results:
-                    if result["label"] in ["anger", "fear", "sadness"] and result["score"] > 0.5:
-                        patterns.append(f"Suspicious emotional tone: {result['label']}")
-                        pattern_scores.append({
-                            "pattern": "emotional_manipulation",
-                            "confidence": result["score"],
-                            "description": f"Suspicious emotional tone detected: {result['label']}"
-                        })
-                        fraud_score += result["score"] * 0.2
+                classification_result = text_classifier(text[:512])  # Limit text length
+                if classification_result and len(classification_result) > 0:
+                    # Look for suspicious classifications (emotion model can detect stress/urgency)
+                    for result in classification_result[0]:
+                        if any(word in result["label"].lower() for word in ["anger", "fear", "sadness"]):
+                            patterns.append({
+                                "pattern": "suspicious_emotion",
+                                "confidence": result["score"],
+                                "description": f"Suspicious emotional tone detected: {result['label']}"
+                            })
+                            fraud_score += result["score"] * 0.2
             except Exception as e:
                 logger.warning(f"Text classification failed: {e}")
         
-        # Normalize fraud score to 0-1 range
+        # 2. Pattern-based fraud detection
+        fraud_keywords = [
+            "urgent", "immediate", "confidential", "wire transfer", "bitcoin",
+            "cryptocurrency", "offshore", "tax haven", "shell company",
+            "forged", "fake", "duplicate", "altered", "tampered"
+        ]
+        
+        text_lower = text.lower()
+        for keyword in fraud_keywords:
+            if keyword in text_lower:
+                patterns.append({
+                    "pattern": "fraud_keyword",
+                    "confidence": 0.7,
+                    "description": f"Fraud-related keyword detected: '{keyword}'"
+                })
+                fraud_score += 0.1
+        
+        # 3. Amount pattern detection
+        import re
+        amount_patterns = re.findall(r'\$[\d,]+\.?\d*', text)
+        if len(amount_patterns) > 5:  # Many amounts might indicate suspicious activity
+            patterns.append({
+                "pattern": "excessive_amounts",
+                "confidence": 0.6,
+                "description": f"Excessive number of monetary amounts detected: {len(amount_patterns)}"
+            })
+            fraud_score += 0.2
+        
+        # 4. Email/phone pattern detection
+        email_patterns = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
+        if len(email_patterns) > 3:
+            patterns.append({
+                "pattern": "multiple_emails",
+                "confidence": 0.5,
+                "description": f"Multiple email addresses detected: {len(email_patterns)}"
+            })
+            fraud_score += 0.1
+        
+        # Normalize fraud score
         fraud_score = min(fraud_score, 1.0)
         
         # Determine risk level
-        if fraud_score >= 0.7:
-            risk_level = "HIGH"
-        elif fraud_score >= 0.4:
-            risk_level = "MEDIUM"
+        if fraud_score >= 0.8:
+            risk_level = "critical"
+        elif fraud_score >= 0.6:
+            risk_level = "high"
+        elif fraud_score >= 0.3:
+            risk_level = "medium"
         else:
-            risk_level = "LOW"
+            risk_level = "low"
         
         processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         
         return {
             "fraud_score": round(fraud_score, 3),
             "risk_level": risk_level,
-            "patterns": list(set(patterns)),
-            "emotion_analysis": emotion_analysis,
-            "pattern_analysis": pattern_analysis,
+            "patterns": patterns,
             "processing_time": round(processing_time, 2)
         }
         
@@ -738,26 +780,16 @@ async def analyze_text_for_fraud(text: str) -> dict:
         logger.error(f"Error in fraud analysis: {e}")
         return {
             "fraud_score": 0.0,
-            "risk_level": "UNKNOWN",
+            "risk_level": "low",
             "patterns": [],
-            "emotion_analysis": None,
-            "pattern_analysis": None,
-            "processing_time": 0.0
+            "processing_time": 0
         }
 
 if __name__ == "__main__":
-    # Get server configuration
-    server_config = config.get_server_config()
-    
-    # Log configuration
-    logger.info(f"Starting FraudDocAI AI Service with configuration:")
-    logger.info(f"  Host: {server_config['host']}")
-    logger.info(f"  Port: {server_config['port']}")
-    logger.info(f"  Reload: {server_config['reload']}")
-    logger.info(f"  Log Level: {server_config['log_level']}")
-    
-    # Start the server
     uvicorn.run(
         "app:app",
-        **server_config
+        host="0.0.0.0",
+        port=8001,
+        reload=True,
+        log_level="info"
     )
