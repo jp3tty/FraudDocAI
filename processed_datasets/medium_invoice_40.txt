@@ -1,0 +1,4 @@
+PAYMENT REQUEST
+Amount: $8952
+Account: 1848996461
+Confidential transaction

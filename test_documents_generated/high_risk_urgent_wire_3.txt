@@ -1,0 +1,6 @@
+CRITICAL: Emergency wire transfer needed
+Amount: $76036
+Account: 7638930416
+Routing: 474467616
+This is URGENT and CONFIDENTIAL!
+Please process immediately!

@@ -1,0 +1,5 @@
+INVOICE #INV-1366
+Amount: $2342
+Due: 2025-09-20
+Wire transfer preferred
+Confidential transaction

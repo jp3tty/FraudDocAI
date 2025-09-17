@@ -1,0 +1,4 @@
+PAYMENT REQUEST
+Amount: $7874
+Account: 4680700909
+Wire transfer preferred

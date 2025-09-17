@@ -1,0 +1,6 @@
+CRITICAL: Emergency wire transfer needed
+Amount: $57660
+Account: 9609746334
+Routing: 297079672
+This is URGENT and CONFIDENTIAL!
+Please process immediately!

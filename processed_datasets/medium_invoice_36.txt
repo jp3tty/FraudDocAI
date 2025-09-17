@@ -1,0 +1,4 @@
+INVOICE #INV-4966
+Amount: $8595
+Due: 2025-09-23
+Confidential transaction

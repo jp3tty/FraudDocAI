@@ -1,0 +1,16 @@
+INVOICE #LEG-7498
+Date: September 17, 2025
+Bill To: Global Solutions Inc
+123 Business Street
+Business City, BC 12345
+
+Description: Professional Services
+Amount: $2214.00
+Due Date: October 17, 2025
+
+Payment Terms: Net 30
+Payment Methods: Check, ACH, Credit Card
+Contact: accounts@globalsolutionsinc.com
+Phone: (555) 123-4567
+
+Thank you for your business!

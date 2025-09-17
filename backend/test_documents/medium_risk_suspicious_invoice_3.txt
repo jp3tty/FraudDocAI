@@ -1,0 +1,7 @@
+Invoice #SUS-1557
+Services Rendered: Consulting
+Amount: $4190
+Payment Terms: Net 30
+Please remit payment to:
+Account: 4540893848
+Note: Payment must be made via wire transfer only

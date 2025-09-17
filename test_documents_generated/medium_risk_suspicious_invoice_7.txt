@@ -1,0 +1,7 @@
+Invoice #SUS-7471
+Services Rendered: Consulting
+Amount: $3050
+Payment Terms: Net 30
+Please remit payment to:
+Account: 6272064235
+Note: Payment must be made via wire transfer only

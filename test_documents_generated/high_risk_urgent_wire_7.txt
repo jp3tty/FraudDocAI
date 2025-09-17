@@ -1,0 +1,6 @@
+CRITICAL: Emergency wire transfer needed
+Amount: $83669
+Account: 7046857355
+Routing: 085417584
+This is URGENT and CONFIDENTIAL!
+Please process immediately!

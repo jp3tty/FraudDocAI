@@ -1,0 +1,66 @@
+{
+  "generated_at": "2025-09-17T09:12:16.235286",
+  "total_documents": 30,
+  "risk_levels": {
+    "high_risk": {
+      "count": 10,
+      "expected_fraud_score_range": "0.6-0.8",
+      "description": "Documents with clear fraud indicators"
+    },
+    "medium_risk": {
+      "count": 10,
+      "expected_fraud_score_range": "0.3-0.5",
+      "description": "Documents with suspicious patterns"
+    },
+    "low_risk": {
+      "count": 10,
+      "expected_fraud_score_range": "0.0-0.2",
+      "description": "Legitimate business documents"
+    }
+  },
+  "fraud_keywords_used": [
+    "urgent",
+    "immediate",
+    "confidential",
+    "wire transfer",
+    "bitcoin",
+    "cryptocurrency",
+    "offshore",
+    "tax haven",
+    "shell company",
+    "forged",
+    "fake",
+    "duplicate",
+    "altered",
+    "tampered",
+    "asap",
+    "rush",
+    "emergency",
+    "critical",
+    "expedite"
+  ],
+  "legitimate_keywords_used": [
+    "payment terms",
+    "net 30",
+    "invoice",
+    "receipt",
+    "statement",
+    "professional services",
+    "consulting",
+    "contract",
+    "agreement",
+    "standard procedure",
+    "normal processing",
+    "regular payment"
+  ],
+  "test_scenarios": [
+    "urgent_wire_transfer",
+    "fake_invoice",
+    "duplicate_payment",
+    "offshore_transfer",
+    "cryptocurrency_scam",
+    "phishing_invoice",
+    "fake_contract",
+    "forged_document"
+  ]
+}

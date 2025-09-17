@@ -1,0 +1,6 @@
+Invoice #SUS-8545
+Amount: $7829
+URGENT: Payment required
+Wire transfer only
+Account: 7163868930
+This is a confidential transaction

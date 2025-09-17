@@ -1,0 +1,9 @@
+{
+  "fraud_score": 0.81752608573428,
+  "risk_level": "high",
+  "document_type": "wire_transfer_request",
+  "fraud_indicators": [
+    "URGENT",
+    "IMMEDIATE"
+  ]
+}

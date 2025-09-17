@@ -1,0 +1,5 @@
+PAYMENT REQUEST
+Amount: $8128
+Account: 2481575361
+Wire transfer preferred
+Confidential transaction

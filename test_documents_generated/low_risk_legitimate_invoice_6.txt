@@ -1,0 +1,16 @@
+INVOICE #LEG-1353
+Date: September 17, 2025
+Bill To: Professional Consulting
+123 Business Street
+Business City, BC 12345
+
+Description: Professional Services
+Amount: $1436.00
+Due Date: October 17, 2025
+
+Payment Terms: Net 30
+Payment Methods: Check, ACH, Credit Card
+Contact: accounts@professionalconsulting.com
+Phone: (555) 123-4567
+
+Thank you for your business!

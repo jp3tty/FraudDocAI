@@ -1,0 +1,5 @@
+PAYMENT REQUEST
+Amount: $1462
+Account: 1276242322
+Payment methods: Check, ACH, Credit Card
+Thank you for your business!

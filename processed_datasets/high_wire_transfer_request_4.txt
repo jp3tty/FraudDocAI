@@ -1,0 +1,4 @@
+IMMEDIATE: Please process wire transfer for $26233
+OFFSHORE
+IMMEDIATE
+CONFIDENTIAL

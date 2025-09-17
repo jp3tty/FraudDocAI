@@ -1,0 +1,6 @@
+CRITICAL: Emergency wire transfer needed
+Amount: $65051
+Account: 4600405129
+Routing: 925909771
+This is URGENT and CONFIDENTIAL!
+Please process immediately!

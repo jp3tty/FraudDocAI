@@ -1,0 +1,4 @@
+PAYMENT REQUEST
+Amount: $3514
+Account: 3215804968
+Wire transfer preferred

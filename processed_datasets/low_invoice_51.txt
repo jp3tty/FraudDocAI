@@ -1,0 +1,5 @@
+INVOICE #LEG-8569
+Amount: $1561
+Due: 2025-10-17
+Payment methods: Check, ACH, Credit Card
+Thank you for your business!

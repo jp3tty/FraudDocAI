@@ -1,0 +1,4 @@
+PAYMENT REQUEST
+Amount: $4760
+Account: 5648292549
+Wire transfer preferred

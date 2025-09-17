@@ -1,0 +1,4 @@
+PAYMENT REQUEST
+Amount: $3627
+Account: 7348575502
+Wire transfer preferred
